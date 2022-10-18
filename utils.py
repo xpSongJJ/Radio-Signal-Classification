@@ -5,10 +5,12 @@ import random
 import math
 import h5py
 import torch
+import pandas as pd
 from tqdm import tqdm
+import json
 
 
-def split_data(root: str, snr: int, ratio: list, test: bool = False):
+def split_data(root: str, snr: int, ratio: list, test: bool = False, one_hot: bool = False):
     # 合法检测 ################
     if len(ratio) != 3:
         ratio = [0.7, 0.1, 0.2]
@@ -22,15 +24,18 @@ def split_data(root: str, snr: int, ratio: list, test: bool = False):
     assert os.path.exists(root), "dataset root: {} does not exist.".format(root)
     f = h5py.File(root, 'r')
     y, z = f['Y'], f['Z']
-    indexes = [index for index, value in enumerate(z) if value == snr]  # 某个信噪比数据的全部索引
+    indexes = [index for index, value in enumerate(z) if value == snr]  # 某个信噪比数据的全部索引, 执行时间较长
+    # max_index = max(indexes)
+    # min_index = min(indexes)
     mod_class = []  # 每一个索引对应的调制类别
-    mod_num = 0  # 每种调制样本个数
     for index in indexes:
-        if y[index, 0] == 1:
-            mod_num += 1
-        for i in range(24):
-            if y[index, i] == 1:
-                mod_class.append(i)
+        # 将独热码转为相应的数字
+        if one_hot is False:
+            for i in range(24):
+                if y[index, i] == 1:
+                    mod_class.append(i)
+        else:
+            mod_class.append(y[index])
 
     train_indexes = []  # 训练集索引
     train_label = []  # 存储训练集图片对应索引信息
@@ -38,6 +43,8 @@ def split_data(root: str, snr: int, ratio: list, test: bool = False):
     val_label = []  # 验证集对应的标签索引
     test_indexes = []  # 存储验证集的所有图片路径
     test_label = []  # 存储验证集图片对应索引信息
+    mod_num = 4096  # 每种调制样本个数
+    data_dir = os.path.dirname(os.path.abspath(root))
     if test:
         for i in range(24):
             start_index = int(mod_num*(1-ratio[2])) + i*mod_num
@@ -45,6 +52,12 @@ def split_data(root: str, snr: int, ratio: list, test: bool = False):
             for j in range(start_index, end_index):
                 test_indexes.append(indexes[j])
                 test_label.append(mod_class[j])
+        json_test_indexes = json.dumps(test_indexes)
+        json_test_label = json.dumps(test_label)
+        with open(data_dir + '/test_indexes.json', 'w') as json_file:
+            json_file.write(json_test_indexes)
+        with open(data_dir + '/test_label.json', 'w') as json_file:
+            json_file.write(json_test_label)
         return test_indexes, test_label
     else:
         for i in range(24):
@@ -59,6 +72,18 @@ def split_data(root: str, snr: int, ratio: list, test: bool = False):
                 else:
                     val_indexes.append(indexes[j])
                     val_label.append(mod_class[j])
+        json_train_indexes = json.dumps(train_indexes)
+        json_train_label = json.dumps(train_label)
+        json_val_indexes = json.dumps(val_indexes)
+        json_val_label = json.dumps(val_label)
+        with open(data_dir + '/train_indexes.json', 'w') as json_file:
+            json_file.write(json_train_indexes)
+        with open(data_dir + '/train_label.json', 'w') as json_file:
+            json_file.write(json_train_label)
+        with open(data_dir + '/val_indexes.json', 'w') as json_file:
+            json_file.write(json_val_indexes)
+        with open(data_dir + '/val_label.json', 'w') as json_file:
+            json_file.write(json_val_label)
         return train_indexes, train_label, val_indexes, val_label
 
 

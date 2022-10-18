@@ -2,10 +2,12 @@ import random
 import argparse
 import h5py
 import torch
+from utils import split_data
+data_root = "../../data/2018/GOLD_XYZ_OSC.hdf5"
 
 data_test = False
 if data_test:
-    f = h5py.File("D:/PythonStudy/PyCharmProjects/data/2018/GOLD_XYZ_OSC.hdf5", 'r')
+    f = h5py.File(data_root, 'r')
     x, y, z = f['X'], f['Y'], f['Z']
     indexes = []
     '''
@@ -25,12 +27,20 @@ if data_test:
             snr_classes.append(int(i))
     print(snr_classes)
 
-data_type_test = False
+data_type_test = True
 if data_type_test:
-    f = h5py.File("D:/PythonStudy/PyCharmProjects/data/2018/GOLD_XYZ_OSC.hdf5", 'r')
+    f = h5py.File(data_root, 'r')
     x = f['X']
     a = x[0]
+    print(a)
     print(a.dtype)
+
+data_y_test = False
+if data_y_test:
+    with h5py.File(data_root, 'r') as f:
+        y = f['Y']
+        print(y.shape)
+        print(y[0])
 
 list_test = False
 if list_test:
@@ -42,6 +52,22 @@ if list_test:
     print(a)
     b = random.sample(list3, 5)
     print(b)
+
+check_h5py_data = False
+if check_h5py_data:
+    data_root = data_root
+    train_indexes, train_label, val_indexes, val_label = split_data(data_root, snr=30,
+                                                                    ratio=[0.7, 0.1, 0.2], test=False)
+    with h5py.File(data_root, 'r') as f:
+        x = f['X']  # 信号
+        y = f['Y']  # 调制格式
+        z = f['Z']  # 信噪比
+        num = 0
+        for i in range(10):
+            print(x[train_indexes[i]])
+            print(train_label[i])
+            print(y[train_label[i]])
+
 
 parser_test = False
 if parser_test:

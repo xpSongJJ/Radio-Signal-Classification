@@ -15,10 +15,11 @@ class MyDataSet(Dataset):
         return len(self.indexes)
 
     def __getitem__(self, item):
-        f = h5py.File(self.hdf5_path, 'r')
-        x = f['X']
-        index = self.indexes[item]
-        signal = x[index]
+
+        with h5py.File(self.hdf5_path, 'r') as f:
+            x = f['X']
+            index = self.indexes[item]
+            signal = x[index]
         '''
         # 此操作将数据转成(32, 32, 2)，通道1是I信号，通道2是Q信号。执行此操作需要调整model中的卷积核及其它参数。
         signal1 = np.reshape(signal[:, 0], [32, 32])
