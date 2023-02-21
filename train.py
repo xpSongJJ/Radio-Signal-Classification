@@ -10,11 +10,12 @@ from torchvision import transforms
 from my_dataset import MyDataSet
 from utils import split_data, create_lr_scheduler, get_params_groups, train_one_epoch, evaluate
 from importlib import import_module
+from config import Config
 
 
 def main(args):
-    device = torch.device(args.device if torch.cuda.is_available() else "cpu")
-    print(f"using {device} device...")
+    config = Config()
+    print(f"using {config.device} device...")
 
     if os.path.exists("./weights") is False:
         os.makedirs("./weights")
@@ -56,21 +57,19 @@ def main(args):
                             indexes=val_indexes,
                             transform=data_transform["val"])
 
-    nw = min([os.cpu_count(), args.batch_size if args.batch_size > 1 else 0, 8])  # number of workers
-    print('Using {} dataloader workers every process'.format(nw))
     train_loader = torch.utils.data.DataLoader(train_dataset,
                                                batch_size=args.batch_size,
                                                shuffle=True,
                                                pin_memory=True,
-                                               num_workers=nw)
+                                               num_workers=config.num_works)
 
     val_loader = torch.utils.data.DataLoader(val_dataset,
                                              batch_size=args.batch_size,
                                              shuffle=False,
                                              pin_memory=True,
-                                             num_workers=nw)
-    model = import_module('models.' + args.model)
-    net = model.net(num_classes=args.num_classes).to(device)
+                                             num_workers=config.num_works)
+    model = import_module('VisionTransformer.' + args.model)
+    net = model.net(num_classes=args.num_classes).to(config.device)
     pg = get_params_groups(net, weight_decay=args.wd)
     optimizer = optim.AdamW(pg, lr=args.lr, weight_decay=args.wd)
     lr_scheduler = create_lr_scheduler(optimizer, len(train_loader), args.epochs,
@@ -82,14 +81,14 @@ def main(args):
         train_loss, train_acc = train_one_epoch(model=net,
                                                 optimizer=optimizer,
                                                 data_loader=train_loader,
-                                                device=device,
+                                                device=config.device,
                                                 epoch=epoch,
                                                 lr_scheduler=lr_scheduler)
 
         # validate
         val_loss, val_acc = evaluate(model=net,
                                      data_loader=val_loader,
-                                     device=device,
+                                     device=config.device,
                                      epoch=epoch)
 
         tags = ["train_loss", "train_acc", "val_loss", "val_acc", "learning_rate"]
@@ -113,10 +112,9 @@ if __name__ == '__main__':
     parser.add_argument('--batch-size', type=int, default=16)
     parser.add_argument('--lr', type=float, default=5e-4)
     parser.add_argument('--wd', type=float, default=5e-2)
-    parser.add_argument('--device', default='cuda:0', help='device id (i.e. 0 or 0,1 or cpu)')
     # 数据集目录全称
     parser.add_argument('--data-path', type=str,
-                        default="./data/2018/GOLD_XYZ_OSC.hdf5")  # hdf5.File()读取文件不支持相对路径
+                        default="../data/2018/GOLD_XYZ_OSC.0001_1024.hdf5")  # hdf5.File()读取文件不支持相对路径
 
     opt = parser.parse_args()
 
